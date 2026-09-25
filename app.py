@@ -1,11 +1,17 @@
 import os
+from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
 from PIL import Image, ImageOps
 
-from model import MODEL_CLASSES, predict_image
+from model import MODEL, MODEL_CLASSES, MODEL_LOAD_ERROR, predict_image
 
-app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
+app = Flask(
+    __name__,
+    static_folder=str(BASE_DIR / "static"),
+    template_folder=str(BASE_DIR / "templates"),
+)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
@@ -29,6 +35,18 @@ def predict():
     file_extension = os.path.splitext(uploaded_file.filename)[1].lower()
     if file_extension not in ALLOWED_EXTENSIONS:
         return jsonify({"success": False, "error": "Please upload a JPG, JPEG, or PNG image."})
+
+    if MODEL is None:
+        return jsonify(
+            {
+                "success": False,
+                "error": (
+                    "The model checkpoint is missing or unavailable. "
+                    "Add the trained model file to model/bone_marrow_resnet18.pth "
+                    "before running inference."
+                ),
+            }
+        )
 
     try:
         image = Image.open(uploaded_file.stream)

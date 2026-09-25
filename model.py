@@ -47,7 +47,13 @@ def load_model(model_path=MODEL_PATH):
     return model
 
 
-MODEL = load_model()
+MODEL = None
+MODEL_LOAD_ERROR = None
+
+try:
+    MODEL = load_model()
+except Exception as exc:  # pragma: no cover - behavior is deployment-safe when model is absent
+    MODEL_LOAD_ERROR = str(exc)
 
 
 def preprocess_image(image):
