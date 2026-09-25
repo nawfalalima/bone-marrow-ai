@@ -1,0 +1,68 @@
+from pathlib import Path
+
+import torch
+from torch import nn
+from torchvision import models, transforms
+
+MODEL_CLASSES = ["BLA", "EOS", "MON", "NGS", "PLM"]
+MODEL_PATH = Path(__file__).resolve().parent / "model" / "bone_marrow_resnet18.pth"
+
+
+def build_model():
+    model = models.resnet18(weights=None)
+    model.fc = nn.Linear(model.fc.in_features, len(MODEL_CLASSES))
+    return model
+
+
+def load_model(model_path=MODEL_PATH):
+    if not model_path.exists():
+        raise FileNotFoundError(f"Model checkpoint not found at: {model_path}")
+
+    try:
+        checkpoint = torch.load(model_path, map_location="cpu")
+    except Exception as exc:
+        raise RuntimeError(f"Could not load the model checkpoint from {model_path}: {exc}") from exc
+
+    if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
+        state_dict = checkpoint["state_dict"]
+    elif isinstance(checkpoint, dict):
+        state_dict = checkpoint
+    else:
+        raise TypeError(
+            f"Unsupported checkpoint format: expected a PyTorch state_dict-like object, got {type(checkpoint)}."
+        )
+
+    state_dict = {key.replace("module.", ""): value for key, value in state_dict.items()}
+
+    model = build_model()
+    try:
+        model.load_state_dict(state_dict, strict=True)
+    except RuntimeError as exc:
+        raise RuntimeError(
+            "Checkpoint format is incompatible with the expected ResNet18 state_dict. "
+            f"Original load error: {exc}"
+        ) from exc
+
+    model.eval()
+    return model
+
+
+MODEL = load_model()
+
+
+def preprocess_image(image):
+    transform = transforms.Compose(
+        [
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+        ]
+    )
+    return transform(image).unsqueeze(0)
+
+
+def predict_image(image):
+    tensor = preprocess_image(image)
+    with torch.no_grad():
+        logits = MODEL(tensor)
+    probabilities = torch.softmax(logits, dim=1)[0]
+    return probabilities.cpu()
