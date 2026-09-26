@@ -23,9 +23,10 @@ This project is a Flask web application that uploads a microscopy image and pred
 
 ## Model file
 
-The trained weights file is intentionally ignored by Git in this repository to keep the project lighter.
-If needed, place your model file in the following location before running the app:
+Place your trained weights file in the following location before running the app:
 
 model/bone_marrow_resnet18.pth
 
-If you want the model included in the GitHub repository, remove the `model/*.pth` entry from `.gitignore` before your first commit.
+If you are deploying to Render, add the model file to the repository or set the `MODEL_DOWNLOAD_URL` environment variable to a public downloadable URL for the `.pth` file.
+
+The project is configured to use `MODEL_PATH` and `MODEL_DOWNLOAD_URL` so it can load a checkpoint in local development or in deployment environments without failing silently.

@@ -7,4 +7,7 @@ venv/
 .env
 .DS_Store
 *.log
-model/*.pth
+
+# Keep the trained model checkpoint so Render can load it at runtime
+!model/
+!model/*.pth

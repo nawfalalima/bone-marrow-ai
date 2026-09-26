@@ -1,11 +1,31 @@
+import os
 from pathlib import Path
+from urllib.request import urlretrieve
 
 import torch
 from torch import nn
 from torchvision import models, transforms
 
 MODEL_CLASSES = ["BLA", "EOS", "MON", "NGS", "PLM"]
-MODEL_PATH = Path(__file__).resolve().parent / "model" / "bone_marrow_resnet18.pth"
+DEFAULT_MODEL_PATH = Path(__file__).resolve().parent / "model" / "bone_marrow_resnet18.pth"
+MODEL_PATH = Path(os.environ.get("MODEL_PATH", DEFAULT_MODEL_PATH))
+MODEL_DOWNLOAD_URL = os.environ.get("MODEL_DOWNLOAD_URL") or os.environ.get("MODEL_URL")
+
+
+def ensure_model_available(model_path=MODEL_PATH, download_url=MODEL_DOWNLOAD_URL):
+    if model_path.exists():
+        return model_path
+
+    if download_url:
+        model_path.parent.mkdir(parents=True, exist_ok=True)
+        urlretrieve(download_url, model_path)
+        if model_path.exists():
+            return model_path
+
+    raise FileNotFoundError(
+        f"Model checkpoint not found at: {model_path}. "
+        "Set MODEL_PATH or MODEL_DOWNLOAD_URL to a valid checkpoint before running inference."
+    )
 
 
 def build_model():
@@ -15,8 +35,7 @@ def build_model():
 
 
 def load_model(model_path=MODEL_PATH):
-    if not model_path.exists():
-        raise FileNotFoundError(f"Model checkpoint not found at: {model_path}")
+    model_path = ensure_model_available(model_path=model_path)
 
     try:
         checkpoint = torch.load(model_path, map_location="cpu")
